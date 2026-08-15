@@ -1,0 +1,44 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
+    <RootNamespace>AI_Native_Runtime_Windows</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <Platforms>x86;x64;ARM64</Platforms>
+    <RuntimeIdentifiers>win-x86;win-x64;win-arm64</RuntimeIdentifiers>
+    <UseWinUI>true</UseWinUI>
+    <WinUISDKReferences>false</WinUISDKReferences>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Manifest Include="$(ApplicationManifest)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.2526" />
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.4.0" />
+	  <PackageReference Include="CommunityToolkit.Mvvm" Version="8.2.0" />
+
+	  <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.0" />
+	  <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0" />
+	  <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="8.0.0" />
+	  <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="8.0.0" />
+	  <PackageReference Include="Microsoft.Extensions.Logging" Version="8.0.0" />
+	  <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="8.0.0" />
+	  <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.0" />
+
+	  <PackageReference Include="Grpc.Net.Client" Version="2.54.0" />
+	  <PackageReference Include="Google.Protobuf" Version="3.21.12" />
+	  <PackageReference Include="Grpc.Tools" Version="2.54.0" PrivateAssets="All" />
+  </ItemGroup>
+
+    <!-- Publish Properties -->
+  <PropertyGroup>
+    <PublishReadyToRun Condition="'$(Configuration)' == 'Debug'">False</PublishReadyToRun>
+    <PublishReadyToRun Condition="'$(Configuration)' != 'Debug'">True</PublishReadyToRun>
+    <PublishTrimmed Condition="'$(Configuration)' == 'Debug'">False</PublishTrimmed>
+    <PublishTrimmed Condition="'$(Configuration)' != 'Debug'">True</PublishTrimmed>
+  </PropertyGroup>
+</Project>
