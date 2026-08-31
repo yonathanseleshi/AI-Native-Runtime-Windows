@@ -26,6 +26,7 @@ namespace AI_Native_Runtime_Windows
         public MainWindow()
         {
             InitializeComponent();
+            RootFrame.Navigate(typeof(Views.SignInPage));
         }
     }
 }

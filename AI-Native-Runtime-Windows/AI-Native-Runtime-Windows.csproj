@@ -32,6 +32,24 @@
 	  <PackageReference Include="Grpc.Net.Client" Version="2.54.0" />
 	  <PackageReference Include="Google.Protobuf" Version="3.21.12" />
 	  <PackageReference Include="Grpc.Tools" Version="2.54.0" PrivateAssets="All" />
+
+	  <!--
+	    Ed25519 for the application installation keypair (Services/RuntimeClient.cs).
+	    net8.0's System.Security.Cryptography has no cross-platform Ed25519 API
+	    (Ed25519 support in .NET's own crypto stack is still incomplete/platform-
+	    gated as of .NET 8 on Windows — there is no System.Security.Cryptography
+	    .Ed25519 type here the way there is for ECDsa/RSA). NSec.Cryptography
+	    wraps libsodium and is the most widely used, actively maintained Ed25519
+	    package for .NET; it ships native libsodium binaries for win-x64/win-x86/
+	    win-arm64, matching this project's <RuntimeIdentifiers>.
+	  -->
+	  <PackageReference Include="NSec.Cryptography" Version="24.4.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="appsettings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
     <!-- Publish Properties -->
