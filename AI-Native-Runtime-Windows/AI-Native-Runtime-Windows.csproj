@@ -10,6 +10,7 @@
     <UseWinUI>true</UseWinUI>
     <WinUISDKReferences>false</WinUISDKReferences>
     <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
 
   <ItemGroup>
@@ -29,9 +30,14 @@
 	  <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="8.0.0" />
 	  <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.0" />
 
-	  <PackageReference Include="Grpc.Net.Client" Version="2.54.0" />
-	  <PackageReference Include="Google.Protobuf" Version="3.21.12" />
-	  <PackageReference Include="Grpc.Tools" Version="2.54.0" PrivateAssets="All" />
+	  <!--
+	    System tray presence (§35's menu-bar-equivalent) — WinUI 3 has no
+	    built-in NotifyIcon; this is the standard community package for it,
+	    mirroring how this project already reaches for community packages
+	    where the platform itself has no first-party API (NSec.Cryptography
+	    below, for the same reason on the Ed25519 side).
+	  -->
+	  <PackageReference Include="H.NotifyIcon.WinUI" Version="2.1.3" />
 
 	  <!--
 	    Ed25519 for the application installation keypair (Services/RuntimeClient.cs).

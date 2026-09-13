@@ -107,6 +107,20 @@
                 IsOpen="False"
                 IsClosable="True" />
 
+            <!--
+                Plan §4.5: a missing/blank Firebase API key is a rendered
+                configuration state, never a constructor-time exception
+                during window construction - this banner is what that
+                state looks like on screen.
+            -->
+            <InfoBar
+                x:Name="ConfigurationErrorBanner"
+                Title="Not configured"
+                Message="Firebase:ApiKey is not set in appsettings.json. See README.md 'Configuration' before signing in."
+                Severity="Error"
+                IsOpen="False"
+                IsClosable="False" />
+
         </StackPanel>
     </Grid>
 </Page>

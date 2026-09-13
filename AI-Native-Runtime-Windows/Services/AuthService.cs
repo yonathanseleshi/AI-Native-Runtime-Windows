@@ -15,6 +15,17 @@ namespace AI_Native_Runtime_Windows.Services
         public SubstrateOfflineException(string message, Exception? inner = null) : base(message, inner) { }
     }
 
+    /// <summary>Thrown by any <see cref="AuthService"/> call that needs a Firebase API
+    /// key when none is configured (`appsettings.json`'s `Firebase:ApiKey` is blank).
+    /// This is the plan §4.5 fix: a missing key is a rendered configuration state the
+    /// sign-in surface checks and displays *before* attempting sign-in - never a
+    /// constructor-time exception thrown during window construction.</summary>
+    public sealed class AuthNotConfiguredException : Exception
+    {
+        public AuthNotConfiguredException()
+            : base("Firebase:ApiKey is not configured. Set it in appsettings.json before signing in - see README.md 'Configuration'.") { }
+    }
+
     /// <summary>Thrown when Firebase reached and responded, but refused the credentials (wrong password, unknown account, disabled user, etc).</summary>
     public sealed class SignInRejectedException : Exception
     {
@@ -69,15 +80,22 @@ namespace AI_Native_Runtime_Windows.Services
         {
             _http = http;
             _credentialStore = credentialStore;
-            if (string.IsNullOrWhiteSpace(firebaseApiKey))
-            {
-                throw new InvalidOperationException(
-                    "Firebase:ApiKey is not configured. Set it in appsettings.json before signing in - see README.md 'Configuration'.");
-            }
+            // Plan §4.5: a blank key is stored, not thrown here - this constructor now
+            // runs safely inside DI container construction at app startup, regardless
+            // of whether Firebase is configured. Every method that actually needs the
+            // key throws AuthNotConfiguredException instead, which the sign-in surface
+            // renders as a configuration-error state.
             _apiKey = firebaseApiKey;
         }
 
+        public bool IsConfigured => !string.IsNullOrWhiteSpace(_apiKey);
+
         public bool IsSignedIn => _session is not null;
+
+        private void EnsureConfigured()
+        {
+            if (!IsConfigured) throw new AuthNotConfiguredException();
+        }
 
         /// <summary>Restores a previously stored session (if any) from Windows Credential Manager, without contacting Firebase. Callers should still call <see cref="GetFreshIdTokenAsync"/> before using the token, since it may need a proactive refresh.</summary>
         public bool TryRestoreSession()
@@ -106,6 +124,7 @@ namespace AI_Native_Runtime_Windows.Services
         /// </summary>
         public async Task<FirebaseSession> SignInAsync(string email, string password, CancellationToken ct = default)
         {
+            EnsureConfigured();
             var url = $"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={Uri.EscapeDataString(_apiKey)}";
             var body = new SignInRequest(email, password, true);
 
@@ -152,6 +171,7 @@ namespace AI_Native_Runtime_Windows.Services
         /// </summary>
         public async Task<FirebaseSession> RefreshAsync(CancellationToken ct = default)
         {
+            EnsureConfigured();
             await _refreshLock.WaitAsync(ct).ConfigureAwait(false);
             try
             {

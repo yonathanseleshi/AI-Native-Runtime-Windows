@@ -7,13 +7,16 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d"
-    Title="AI-Native-Runtime-Windows">
+    Title="AI Native Runtime">
 
     <Window.SystemBackdrop>
         <MicaBackdrop />
     </Window.SystemBackdrop>
 
     <Grid>
+        <!-- Template removal (plan criterion 1): no default WinUI window content remains -
+             this Frame's first navigation target is decided in code-behind by whether a
+             Firebase session can be restored (SignInPage vs. Navigation.ShellPage). -->
         <Frame x:Name="RootFrame" />
     </Grid>
 </Window>

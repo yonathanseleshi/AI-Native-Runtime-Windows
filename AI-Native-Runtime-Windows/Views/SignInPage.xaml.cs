@@ -1,8 +1,8 @@
 using System;
-using System.Net.Http;
 using System.Threading.Tasks;
 using AI_Native_Runtime_Windows.Services;
-using Microsoft.Extensions.Configuration;
+using AI_Native_Runtime_Windows.Services.Transport;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml.Controls;
 
 namespace AI_Native_Runtime_Windows.Views
@@ -10,39 +10,38 @@ namespace AI_Native_Runtime_Windows.Views
     /// <summary>
     /// The sign-in screen: Firebase email/password sign-in
     /// (<see cref="AuthService"/>) followed by the local device
-    /// registration ceremony against CORE (<see cref="RuntimeClient"/>).
-    /// Surfaces three distinguishable failure states per the application
-    /// guide - runtime unavailable, substrate offline, registration
-    /// rejected - as separate <c>InfoBar</c>s, plus a fourth ("sign-in
-    /// failed") for the ordinary wrong-password case, which is not one of
-    /// the three named states but must not be collapsed into them either.
+    /// registration ceremony against CORE (<see cref="RuntimeService"/>).
+    /// Every dependency is now resolved from <see cref="App.AppHost"/>
+    /// (plan §4.5) rather than constructed inline, so a missing/blank
+    /// Firebase key surfaces as <see cref="ConfigurationErrorBanner"/>,
+    /// never a constructor-time exception during window construction.
     /// </summary>
     public sealed partial class SignInPage : Page
     {
-        private readonly AuthService _authService;
-        private readonly RuntimeClient _runtimeClient;
+        private readonly AuthService _authService = App.AppHost.Services.GetRequiredService<AuthService>();
+        private readonly RuntimeService _runtime = App.AppHost.Services.GetRequiredService<RuntimeService>();
 
         public SignInPage()
         {
             InitializeComponent();
+            Loaded += async (_, _) => await TryAutoSignInAsync();
+        }
 
-            // Foundation-wave wiring: a real app would resolve these through
-            // Microsoft.Extensions.DependencyInjection (already referenced
-            // in the .csproj) from App.xaml.cs's host builder. Constructed
-            // directly here to keep this checkpoint's slice self-contained
-            // and easy to follow end-to-end in one file.
-            var configuration = new ConfigurationBuilder()
-                .SetBasePath(AppContext.BaseDirectory)
-                .AddJsonFile("appsettings.json", optional: true, reloadOnChange: false)
-                .Build();
-
-            var firebaseApiKey = configuration["Firebase:ApiKey"] ?? string.Empty;
-            var applicationId = configuration["Runtime:ApplicationId"] ?? "app_desktop_windows";
-            var pipeName = configuration["Runtime:PipeName"] ?? "ainativeruntime-runtime";
-
-            var credentialStore = new CredentialStore();
-            _authService = new AuthService(new HttpClient(), credentialStore, firebaseApiKey);
-            _runtimeClient = new RuntimeClient(credentialStore, applicationId, pipeName);
+        /// <summary>If a Firebase refresh token can be restored, skip straight to the
+        /// registration ceremony rather than asking the user to type a password again -
+        /// a CORE session is still re-established fresh on every launch regardless
+        /// (`RuntimeService`'s own doc comment: session tokens are never persisted).</summary>
+        private async Task TryAutoSignInAsync()
+        {
+            if (!_authService.IsConfigured)
+            {
+                ShowBanner(ConfigurationErrorBanner);
+                return;
+            }
+            if (_authService.TryRestoreSession())
+            {
+                await CompleteSignInAsync();
+            }
         }
 
         private async void OnSignInClick(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
@@ -57,6 +56,13 @@ namespace AI_Native_Runtime_Windows.Views
 
         private async Task SignInAsync()
         {
+            if (!_authService.IsConfigured)
+            {
+                HideAllBanners();
+                ShowBanner(ConfigurationErrorBanner);
+                return;
+            }
+
             HideAllBanners();
             SetBusy(true);
             try
@@ -70,30 +76,10 @@ namespace AI_Native_Runtime_Windows.Views
                     return;
                 }
 
-                // Step 1: authenticate the human against Firebase. Failures
-                // here are either "substrate offline" (network) or an
-                // ordinary rejected sign-in (bad credentials) - AuthService
-                // distinguishes these via exception type.
+                // Step 1: authenticate the human against Firebase.
                 await _authService.SignInAsync(email, password);
 
-                // Step 2: connect to CORE over the named pipe. A failure
-                // here is the "runtime unavailable" state - it happens
-                // before any registration ceremony begins, so it is checked
-                // even though sign-in itself already succeeded.
-                await _runtimeClient.ConnectAsync();
-
-                // Step 3: bind this installation, establish a session, and
-                // register the device - using a freshly refreshed Firebase
-                // ID token (plan §4.31), never the one SignInAsync first
-                // returned, since some time may have passed.
-                var freshToken = await _authService.GetFreshIdTokenAsync();
-                var outcome = await _runtimeClient.SignInAndRegisterAsync(freshToken);
-
-                // A real app would navigate to the main window/shell here,
-                // passing `outcome` (nodeId/deviceId/organizationId/state)
-                // along. Out of scope for this checkpoint's sign-in slice.
-                System.Diagnostics.Debug.WriteLine(
-                    $"Device registered: nodeId={outcome.NodeId} organizationId={outcome.OrganizationId} state={outcome.State}");
+                await CompleteSignInAsync();
             }
             catch (SubstrateOfflineException)
             {
@@ -103,25 +89,59 @@ namespace AI_Native_Runtime_Windows.Views
             {
                 ShowBanner(SignInFailedBanner, "Incorrect email or password.");
             }
+            finally
+            {
+                SetBusy(false);
+            }
+        }
+
+        /// <summary>Steps 2-3 of the ceremony, shared by the manual sign-in path and the
+        /// auto-restored-session path: connect to CORE, then bind/establish/register.</summary>
+        private async Task CompleteSignInAsync()
+        {
+            HideAllBanners();
+            SetBusy(true);
+            try
+            {
+                // Step 2: connect to CORE over the named pipe (the RPC connection).
+                await _runtime.StartAsync();
+
+                // Step 3: bind this installation, establish a session, and register the
+                // device - using a freshly refreshed Firebase ID token (plan §4.31),
+                // never the one SignInAsync first returned, since some time may have
+                // passed between it and this call.
+                var freshToken = await _authService.GetFreshIdTokenAsync();
+                await _runtime.SignInAndRegisterAsync(freshToken);
+
+                // The event-stream connection requires a session and is therefore
+                // started only now, after the ceremony above has one (§4.6).
+                _runtime.StartEventStream();
+
+                var window = (Microsoft.UI.Xaml.Application.Current as App)?.MainAppWindow;
+                if (window is MainWindow mainWindow)
+                {
+                    mainWindow.NavigateToShell();
+                }
+            }
             catch (RuntimeUnavailableException)
             {
                 ShowBanner(RuntimeUnavailableBanner);
             }
-            catch (RuntimeRpcException rpcEx) when (rpcEx.IndicatesSubstrateOffline)
-            {
-                // CORE itself could not reach RTAPI - from the user's
-                // perspective this is the same "substrate offline" state as
-                // Firebase being unreachable, even though it surfaced from
-                // a different leg of the ceremony.
-                ShowBanner(SubstrateOfflineBanner);
-            }
-            catch (RuntimeRpcException rpcEx) when (rpcEx.IndicatesRegistrationRejected)
-            {
-                ShowBanner(RegistrationRejectedBanner, rpcEx.Message);
-            }
             catch (RuntimeRpcException rpcEx)
             {
-                ShowBanner(RegistrationRejectedBanner, rpcEx.Message);
+                var appError = RuntimeAppError.FromException(rpcEx);
+                if (appError.PresentationCategory == ErrorPresentation.RetryableFailure && rpcEx.Code == "NODE_UNAVAILABLE")
+                {
+                    // CORE itself could not reach RTAPI - from the user's perspective
+                    // this is the same "substrate offline" state as Firebase being
+                    // unreachable, even though it surfaced from a different leg of
+                    // the ceremony.
+                    ShowBanner(SubstrateOfflineBanner);
+                }
+                else
+                {
+                    ShowBanner(RegistrationRejectedBanner, rpcEx.Message);
+                }
             }
             finally
             {
@@ -142,6 +162,7 @@ namespace AI_Native_Runtime_Windows.Views
             SubstrateOfflineBanner.IsOpen = false;
             RegistrationRejectedBanner.IsOpen = false;
             SignInFailedBanner.IsOpen = false;
+            ConfigurationErrorBanner.IsOpen = false;
         }
 
         private static void ShowBanner(InfoBar banner, string? message = null)

@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Page
+    x:Class="AI_Native_Runtime_Windows.Views.HomePage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:shared="using:AI_Native_Runtime_Windows.Shared"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
+
+    <Page.Resources>
+        <shared:BoolToVisibilityConverter x:Key="BoolToVisibility" />
+    </Page.Resources>
+
+    <Grid Padding="24">
+        <ProgressRing IsActive="{x:Bind ViewModel.IsLoading, Mode=OneWay}"
+                      Visibility="{x:Bind ViewModel.IsLoading, Mode=OneWay, Converter={StaticResource BoolToVisibility}}"
+                      HorizontalAlignment="Center" VerticalAlignment="Center" Width="32" Height="32" />
+
+        <InfoBar Severity="Error" IsOpen="{x:Bind ViewModel.IsError, Mode=OneWay}"
+                 Title="Runtime Core unavailable"
+                 Message="{x:Bind ViewModel.ErrorMessage, Mode=OneWay}"
+                 VerticalAlignment="Top">
+            <InfoBar.ActionButton>
+                <Button Content="Retry" Command="{x:Bind ViewModel.RetryCommand}" />
+            </InfoBar.ActionButton>
+        </InfoBar>
+
+        <ScrollViewer Visibility="{x:Bind ViewModel.IsData, Mode=OneWay, Converter={StaticResource BoolToVisibility}}">
+            <StackPanel Spacing="16" MaxWidth="640">
+                <TextBlock Text="Runtime Status" Style="{StaticResource TitleTextBlockStyle}" />
+
+                <StackPanel Orientation="Horizontal" Spacing="24">
+                    <StackPanel>
+                        <TextBlock Text="Node" Opacity="0.6" />
+                        <TextBlock Text="{x:Bind ViewModel.NodeId, Mode=OneWay}" />
+                    </StackPanel>
+                    <StackPanel>
+                        <TextBlock Text="Node status" Opacity="0.6" />
+                        <TextBlock Text="{x:Bind ViewModel.NodeStatus, Mode=OneWay}" />
+                    </StackPanel>
+                    <StackPanel>
+                        <TextBlock Text="Protocol" Opacity="0.6" />
+                        <TextBlock Text="{x:Bind ViewModel.ProtocolVersion, Mode=OneWay}" />
+                    </StackPanel>
+                    <StackPanel>
+                        <TextBlock Text="Connection" Opacity="0.6" />
+                        <TextBlock Text="{x:Bind ViewModel.ConnectionState, Mode=OneWay}" />
+                    </StackPanel>
+                </StackPanel>
+
+                <!--
+                    §4.15: rendered as a liveness indication ("the Runtime is
+                    responding"), never as a computed health assessment - CORE's
+                    own `health` field is a hardcoded literal, not computed.
+                -->
+                <TextBlock>
+                    <Run Text="Liveness: " />
+                    <Run Text="{x:Bind ViewModel.Liveness, Mode=OneWay}" />
+                    <Run Text=" (the Runtime is responding - not a computed health assessment)" FontSize="11" />
+                </TextBlock>
+
+                <TextBlock>
+                    <Run Text="Uptime: " />
+                    <Run Text="{x:Bind ViewModel.UptimeMs, Mode=OneWay}" />
+                    <Run Text=" ms" />
+                </TextBlock>
+
+                <MenuFlyoutSeparator />
+
+                <TextBlock Text="Emergency Controls" Style="{StaticResource SubtitleTextBlockStyle}" />
+                <TextBlock Text="Each button below performs the real Runtime Core operation - not a client-side simulation." Opacity="0.6" TextWrapping="Wrap" />
+
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <Button Content="Pause Execution" Command="{x:Bind ViewModel.PauseCommand}"
+                            Visibility="{x:Bind ViewModel.IsPaused, Mode=OneWay, ConverterParameter=Invert, Converter={StaticResource BoolToVisibility}}"
+                            AutomationProperties.HelpText="Refuses new execution requests, local and cloud-dispatched, while allowing any already-running execution to finish." />
+                    <Button Content="Resume Execution" Command="{x:Bind ViewModel.ResumeCommand}"
+                            Visibility="{x:Bind ViewModel.IsPaused, Mode=OneWay, Converter={StaticResource BoolToVisibility}}"
+                            AutomationProperties.HelpText="Resumes accepting new execution requests." />
+                    <Button Content="Disconnect Cloud" Command="{x:Bind ViewModel.DisconnectCloudCommand}"
+                            Visibility="{x:Bind ViewModel.IsCloudConnected, Mode=OneWay, Converter={StaticResource BoolToVisibility}}"
+                            AutomationProperties.HelpText="Stops the cloud control-channel connection. Local execution continues unaffected." />
+                    <Button Content="Connect Cloud" Command="{x:Bind ViewModel.ConnectCloudCommand}"
+                            Visibility="{x:Bind ViewModel.IsCloudConnected, Mode=OneWay, ConverterParameter=Invert, Converter={StaticResource BoolToVisibility}}"
+                            AutomationProperties.HelpText="Reconnects the cloud control-channel connection." />
+                    <Button Content="Stop Runtime" Command="{x:Bind ViewModel.StopRuntimeCommand}"
+                            Style="{StaticResource AccentButtonStyle}"
+                            AutomationProperties.HelpText="Gracefully shuts down the Runtime Core after draining in-flight work. This is not reversible from this app - the background service must be restarted to bring it back." />
+                </StackPanel>
+
+                <TextBlock Text="{x:Bind ViewModel.ControlActionMessage, Mode=OneWay}" Opacity="0.7" />
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</Page>

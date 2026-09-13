@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Page
+    x:Class="AI_Native_Runtime_Windows.Navigation.ShellPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:tb="using:H.NotifyIcon"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
+
+    <Grid>
+        <NavigationView
+            x:Name="NavView"
+            IsBackButtonVisible="Collapsed"
+            IsSettingsVisible="True"
+            ItemInvoked="NavView_ItemInvoked"
+            Loaded="NavView_Loaded">
+            <NavigationView.MenuItems>
+                <NavigationViewItem Content="Home" Tag="Home" />
+                <NavigationViewItem Content="Activity" Tag="Activity" />
+                <NavigationViewItem Content="Approvals" Tag="Approvals" />
+                <NavigationViewItem Content="Applications" Tag="Applications" />
+                <NavigationViewItem Content="Permissions" Tag="Permissions" />
+                <NavigationViewItem Content="Capabilities" Tag="Capabilities" />
+                <NavigationViewItem Content="Security" Tag="Security" />
+                <NavigationViewItem Content="Logs" Tag="Logs" />
+            </NavigationView.MenuItems>
+            <Frame x:Name="ContentFrame" />
+        </NavigationView>
+
+        <!--
+            System-tray presence (§35's menu-bar equivalent, mirroring MAC's
+            MenuBarExtra scope): connection state, pending-approval count,
+            Pause/Resume, Stop Runtime, Open Runtime, Quit - never a second
+            copy of Home. Shares this page's own RuntimeService instance,
+            so the window and the tray icon observe one session and one
+            connection, not two independently drifting ones.
+        -->
+        <tb:TaskbarIcon
+            x:Name="TrayIcon"
+            ToolTipText="AI Native Runtime"
+            ContextMenuMode="SecondWindow">
+            <tb:TaskbarIcon.ContextFlyout>
+                <MenuFlyout>
+                    <MenuFlyoutItem x:Name="ConnectionStatusItem" Text="Connection: unknown" IsEnabled="False" />
+                    <MenuFlyoutItem x:Name="PendingApprovalsItem" Text="Pending approvals: 0" IsEnabled="False" />
+                    <MenuFlyoutSeparator />
+                    <MenuFlyoutItem x:Name="PauseResumeItem" Text="Pause Execution" Click="OnPauseResumeClick" />
+                    <MenuFlyoutItem x:Name="CloudConnectItem" Text="Disconnect Cloud" Click="OnCloudConnectClick" />
+                    <MenuFlyoutItem Text="Stop Runtime" Click="OnStopRuntimeClick" />
+                    <MenuFlyoutSeparator />
+                    <MenuFlyoutItem Text="Open Runtime" Click="OnOpenRuntimeClick" />
+                    <MenuFlyoutItem Text="Quit" Click="OnQuitClick" />
+                </MenuFlyout>
+            </tb:TaskbarIcon.ContextFlyout>
+        </tb:TaskbarIcon>
+    </Grid>
+</Page>

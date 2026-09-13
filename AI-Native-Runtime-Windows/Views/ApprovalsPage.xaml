@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Page
+    x:Class="AI_Native_Runtime_Windows.Views.ApprovalsPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:shared="using:AI_Native_Runtime_Windows.Shared"
+    xmlns:models="using:AI_Native_Runtime_Windows.Models"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    x:Name="ApprovalsPageRoot">
+
+    <Page.Resources>
+        <shared:BoolToVisibilityConverter x:Key="BoolToVisibility" />
+    </Page.Resources>
+
+    <Grid Padding="24">
+        <ProgressRing IsActive="{x:Bind ViewModel.IsLoading, Mode=OneWay}"
+                      Visibility="{x:Bind ViewModel.IsLoading, Mode=OneWay, Converter={StaticResource BoolToVisibility}}"
+                      HorizontalAlignment="Center" VerticalAlignment="Center" Width="32" Height="32" />
+
+        <InfoBar Severity="Error" IsOpen="{x:Bind ViewModel.IsError, Mode=OneWay}"
+                 Title="Could not load approvals" Message="{x:Bind ViewModel.ErrorMessage, Mode=OneWay}"
+                 VerticalAlignment="Top">
+            <InfoBar.ActionButton>
+                <Button Content="Retry" Command="{x:Bind ViewModel.RetryCommand}" />
+            </InfoBar.ActionButton>
+        </InfoBar>
+
+        <TextBlock Text="No approvals are pending right now."
+                   Visibility="{x:Bind ViewModel.IsEmpty, Mode=OneWay, Converter={StaticResource BoolToVisibility}}"
+                   HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="0.6" />
+
+        <ListView ItemsSource="{x:Bind ViewModel.Approvals}"
+                  Visibility="{x:Bind ViewModel.IsData, Mode=OneWay, Converter={StaticResource BoolToVisibility}}"
+                  SelectionMode="None">
+            <ListView.ItemTemplate>
+                <DataTemplate x:DataType="models:ApprovalItem">
+                    <Grid Padding="0,8" ColumnSpacing="16">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0"
+                                    AutomationProperties.Name="{x:Bind AccessibilitySummary}">
+                            <TextBlock FontWeight="SemiBold" AutomationProperties.AccessibilityView="Raw">
+                                <Run Text="{x:Bind CapabilityId}" />
+                                <Run Text=" on " />
+                                <Run Text="{x:Bind Resource}" />
+                            </TextBlock>
+                            <TextBlock Opacity="0.7" FontSize="12" AutomationProperties.AccessibilityView="Raw">
+                                <Run Text="Requested by " />
+                                <Run Text="{x:Bind ApplicationId}" />
+                                <Run Text=" - baseline risk " />
+                                <Run Text="{x:Bind BaselineRisk}" />
+                                <Run Text=", effective risk " />
+                                <Run Text="{x:Bind EffectiveRisk}" />
+                            </TextBlock>
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                            <Button Content="Deny"
+                                    Command="{Binding ViewModel.DenyCommand, ElementName=ApprovalsPageRoot}"
+                                    CommandParameter="{x:Bind}"
+                                    AutomationProperties.Name="{x:Bind DenyAutomationLabel}"
+                                    AutomationProperties.HelpText="This execution will fail; it will appear denied in the audit record." />
+                            <Button Content="Allow Once" Style="{StaticResource AccentButtonStyle}"
+                                    Command="{Binding ViewModel.AllowOnceCommand, ElementName=ApprovalsPageRoot}"
+                                    CommandParameter="{x:Bind}"
+                                    AutomationProperties.Name="{x:Bind AllowAutomationLabel}"
+                                    AutomationProperties.HelpText="This execution will proceed one time only; no session or persistent grant is created." />
+                        </StackPanel>
+                    </Grid>
+                </DataTemplate>
+            </ListView.ItemTemplate>
+        </ListView>
+    </Grid>
+</Page>

@@ -1,50 +1,70 @@
-﻿using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Controls.Primitives;
-using Microsoft.UI.Xaml.Data;
-using Microsoft.UI.Xaml.Input;
-using Microsoft.UI.Xaml.Media;
-using Microsoft.UI.Xaml.Navigation;
-using Microsoft.UI.Xaml.Shapes;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Runtime.InteropServices.WindowsRuntime;
-using Windows.ApplicationModel;
-using Windows.ApplicationModel.Activation;
-using Windows.Foundation;
-using Windows.Foundation.Collections;
-
-// To learn more about WinUI, the WinUI project structure,
-// and more about our project templates, see: http://aka.ms/winui-project-info.
+using AI_Native_Runtime_Windows.Models;
+using AI_Native_Runtime_Windows.Services;
+using AI_Native_Runtime_Windows.Services.Transport;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.UI.Xaml;
 
 namespace AI_Native_Runtime_Windows
 {
     /// <summary>
-    /// Provides application-specific behavior to supplement the default Application class.
+    /// Application entry point. Plan §4.5's fix: every service that could
+    /// previously throw during construction (`AuthService` on a blank
+    /// Firebase key) is now built once, here, inside a
+    /// <see cref="Microsoft.Extensions.Hosting"/> DI container at process
+    /// startup — `SignInPage` and every other view resolve their
+    /// dependencies from <see cref="AppHost"/> rather than constructing
+    /// them inline, so a missing/blank key becomes a state the sign-in
+    /// surface renders (`AuthService.IsConfigured`), never an exception
+    /// thrown while a XAML page's constructor runs.
     /// </summary>
     public partial class App : Application
     {
-        private Window? _window;
+        /// <summary>The DI container for the whole application's lifetime. Not run as an
+        /// actual hosted service loop (`RunAsync`) - WinUI has its own message loop via
+        /// `OnLaunched`; this is used purely as a service container, built once here.</summary>
+        public static IHost AppHost { get; private set; } = null!;
 
-        /// <summary>
-        /// Initializes the singleton application object.  This is the first line of authored code
-        /// executed, and as such is the logical equivalent of main() or WinMain().
-        /// </summary>
+        public Window? MainAppWindow { get; private set; }
+
         public App()
         {
             InitializeComponent();
+
+            AppHost = Host.CreateDefaultBuilder()
+                .ConfigureAppConfiguration((_, config) =>
+                {
+                    config.SetBasePath(AppContext.BaseDirectory);
+                    config.AddJsonFile("appsettings.json", optional: true, reloadOnChange: false);
+                })
+                .ConfigureServices((context, services) =>
+                {
+                    services.Configure<FirebaseOptions>(context.Configuration.GetSection(FirebaseOptions.SectionName));
+                    services.Configure<RuntimeOptions>(context.Configuration.GetSection(RuntimeOptions.SectionName));
+
+                    services.AddHttpClient();
+                    services.AddSingleton<CredentialStore>();
+                    services.AddSingleton<CursorStore>();
+
+                    services.AddSingleton(sp =>
+                    {
+                        var http = sp.GetRequiredService<IHttpClientFactory>().CreateClient();
+                        var credentialStore = sp.GetRequiredService<CredentialStore>();
+                        var apiKey = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<FirebaseOptions>>().Value.ApiKey;
+                        return new AuthService(http, credentialStore, apiKey);
+                    });
+
+                    services.AddSingleton<RuntimeService>();
+                    services.AddSingleton<BackgroundServiceController>();
+                })
+                .Build();
         }
 
-        /// <summary>
-        /// Invoked when the application is launched.
-        /// </summary>
-        /// <param name="args">Details about the launch request and process.</param>
-        protected override void OnLaunched(Microsoft.UI.Xaml.LaunchActivatedEventArgs args)
+        protected override void OnLaunched(LaunchActivatedEventArgs args)
         {
-            _window = new MainWindow();
-            _window.Activate();
+            MainAppWindow = new MainWindow();
+            MainAppWindow.Activate();
         }
     }
 }
