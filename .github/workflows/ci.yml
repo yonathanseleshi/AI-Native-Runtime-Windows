@@ -1,0 +1,60 @@
+name: CI
+
+# FD-Wave 11 (F11) Checkpoint F11B, tasks 8/10 — WIN's first CI workflow,
+# on a Windows runner as §4.7/§20.10 require. Commands are taken verbatim
+# from README.md's own documented "Building and running"/"Running the
+# tests" sections (`dotnet build`/`dotnet test` with `-p:Platform=x64`),
+# not invented. Only the app + test projects are built via `dotnet` — the
+# sibling `.wapproj` (MSIX packaging project) is an MSBuild-only project
+# type `dotnet build` cannot target directly, so packaging verification
+# uses `msbuild` against the full `.slnx` via microsoft/setup-msbuild,
+# covering the one thing the plain `dotnet build` of the app project
+# alone would miss.
+#
+# CRITICAL, PER STANDING PROJECT RULE: this workflow is authored and
+# locally schema-validated only (no Windows host was available in this
+# checkpoint's own execution environment to run `dotnet build`/`dotnet
+# test` against, beyond reading the project files and README closely). It
+# has never been triggered on a real GitHub Actions Windows runner,
+# because doing so requires this file to be pushed to the remote — which
+# the implementing agent that authored it does not do (see the F11B
+# completion report for the explicit execution-verification gap this
+# leaves, alongside CORE's own D-36 fix, which this workflow's coverage
+# of CORE depends on once D-36 is verified against a real Windows
+# cross-compile).
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  validate:
+    name: build, test (win-x64)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - uses: microsoft/setup-msbuild@v2
+
+      - name: Restore
+        run: dotnet restore "AI-Native-Runtime-Windows.slnx"
+
+      - name: Build app project (win-x64)
+        run: dotnet build "AI-Native-Runtime-Windows\AI-Native-Runtime-Windows.csproj" -p:Platform=x64 --configuration Release
+
+      - name: Unit tests (win-x64, fails on zero collected tests)
+        run: |
+          dotnet test "AI-Native-Runtime-Windows.Tests\AI-Native-Runtime-Windows.Tests.csproj" -p:Platform=x64 --configuration Release --logger "console;verbosity=normal" | Tee-Object -FilePath dotnet-test.log
+          if (-not (Select-String -Path dotnet-test.log -Pattern '(?i)Passed!\s*-\s*Failed:\s*0.*Passed:\s*[1-9]')) {
+            Write-Error "No passing tests were reported, or a test failed — this is a silent-green failure, not a pass."
+            exit 1
+          }
+        shell: pwsh
+
+      - name: Full solution build, including MSIX packaging project (.wapproj)
+        run: msbuild "AI-Native-Runtime-Windows.slnx" /p:Configuration=Release /p:Platform=x64 /restore
