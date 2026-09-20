@@ -64,7 +64,13 @@ namespace AI_Native_Runtime_Windows.Models
         public bool HasCorrelationId => !string.IsNullOrEmpty(CorrelationId);
     }
 
-    public sealed record CapabilityItem(string CapabilityId, string ProviderKind, string? ProviderWorkerId, string Availability)
+    public sealed record CapabilityItem(
+        string CapabilityId,
+        string ProviderKind,
+        string? ProviderWorkerId,
+        string Availability,
+        string RiskBaseline,
+        bool ApprovalRequired)
     {
         public static CapabilityItem FromJson(JsonElement e)
         {
@@ -73,7 +79,13 @@ namespace AI_Native_Runtime_Windows.Models
                 CapabilityId: definition.TryGetProperty("capabilityId", out var cid) ? cid.GetString() ?? "" : "",
                 ProviderKind: e.TryGetProperty("providerKind", out var pk) ? pk.GetString() ?? "" : "",
                 ProviderWorkerId: e.TryGetProperty("providerWorkerId", out var pw) && pw.ValueKind == JsonValueKind.String ? pw.GetString() : null,
-                Availability: e.TryGetProperty("availability", out var av) ? av.ToString() : "");
+                Availability: e.TryGetProperty("availability", out var av) ? av.ToString() : "",
+                // Sourced generically from the wire `riskBaseline` string (LOW/MODERATE/HIGH/
+                // RESTRICTED, per `ainativeruntime_protocol::capability::RiskBaseline`) - no
+                // per-capability-id mapping, so any new capability id renders with its real
+                // risk label without UI code changes.
+                RiskBaseline: definition.TryGetProperty("riskBaseline", out var rb) ? rb.GetString() ?? "" : "",
+                ApprovalRequired: definition.TryGetProperty("approvalRequired", out var ar) && ar.ValueKind == JsonValueKind.True);
         }
     }
 }

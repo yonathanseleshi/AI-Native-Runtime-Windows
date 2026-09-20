@@ -85,7 +85,7 @@ namespace AI_Native_Runtime_Windows.Tests
         {
             var json = """
             {
-                "definition": { "capabilityId": "python.run@1" },
+                "definition": { "capabilityId": "python.run@1", "riskBaseline": "MODERATE", "approvalRequired": true },
                 "availability": "AVAILABLE",
                 "providerKind": "WORKER",
                 "providerWorkerId": "worker_1"
@@ -96,6 +96,29 @@ namespace AI_Native_Runtime_Windows.Tests
             Assert.Equal("python.run@1", item.CapabilityId);
             Assert.Equal("WORKER", item.ProviderKind);
             Assert.Equal("worker_1", item.ProviderWorkerId);
+            Assert.Equal("MODERATE", item.RiskBaseline);
+            Assert.True(item.ApprovalRequired);
+        }
+
+        [Fact]
+        public void CapabilityItem_reads_an_unrecognized_new_capability_id_generically()
+        {
+            // Guards the checkpoint's requirement: a capability id this client has never
+            // seen before (e.g. a new filesystem.* verb) still surfaces its real risk
+            // baseline via the same generic field read - no id-to-label mapping to extend.
+            var json = """
+            {
+                "definition": { "capabilityId": "filesystem.mkdir@1", "riskBaseline": "MODERATE", "approvalRequired": false },
+                "availability": "AVAILABLE",
+                "providerKind": "NATIVE",
+                "providerWorkerId": null
+            }
+            """;
+            var item = CapabilityItem.FromJson(JsonDocument.Parse(json).RootElement);
+
+            Assert.Equal("filesystem.mkdir@1", item.CapabilityId);
+            Assert.Equal("MODERATE", item.RiskBaseline);
+            Assert.False(item.ApprovalRequired);
         }
     }
 }

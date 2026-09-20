@@ -48,6 +48,7 @@
                             <TextBlock Text="{x:Bind CapabilityId}" FontWeight="SemiBold" />
                             <TextBlock Text="{x:Bind ProviderKind}" Opacity="0.7" />
                             <TextBlock Text="{x:Bind ProviderWorkerId}" Opacity="0.5" FontSize="12" />
+                            <TextBlock Text="{x:Bind RiskBaseline}" Opacity="0.7" FontSize="12" />
                         </StackPanel>
                     </DataTemplate>
                 </ListView.ItemTemplate>
