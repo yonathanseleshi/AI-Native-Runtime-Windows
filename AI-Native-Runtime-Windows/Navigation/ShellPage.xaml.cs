@@ -106,18 +106,18 @@ namespace AI_Native_Runtime_Windows.Navigation
                 case "Approvals": ContentFrame.Navigate(typeof(ApprovalsPage)); break;
                 case "Capabilities": ContentFrame.Navigate(typeof(CapabilitiesPage)); break;
                 case "Logs": ContentFrame.Navigate(typeof(LogsPage)); break;
-                // Plan §4.18: Applications, Permissions, and Security have no backing CORE
-                // surface on either platform yet - an honest "not yet available" state,
-                // never a placeholder screen implying the feature exists.
+                // Plan §4.18: Applications and Security have no backing CORE surface on
+                // either platform yet - an honest "not yet available" state, never a
+                // placeholder screen implying the feature exists. Permissions gained one
+                // in INV-02 Checkpoint INV-02C (`permission.list`/`permission.revoke`,
+                // plan §4.8/§10, RT-PERM-008) and is no longer a placeholder.
                 case "Applications":
                     ContentFrame.Navigate(typeof(NotYetAvailablePage), (
                         "Applications",
                         "Application management is not yet available in this v0.1 shell. This surface will list applications bound to this installation once a future wave adds the underlying CORE API."));
                     break;
                 case "Permissions":
-                    ContentFrame.Navigate(typeof(NotYetAvailablePage), (
-                        "Permissions",
-                        "Per-capability permission management is not yet available. Filesystem roots and other permission grants are configured today only through the Runtime Core's own environment configuration."));
+                    ContentFrame.Navigate(typeof(PermissionGrantsPage));
                     break;
                 case "Security":
                     ContentFrame.Navigate(typeof(NotYetAvailablePage), (

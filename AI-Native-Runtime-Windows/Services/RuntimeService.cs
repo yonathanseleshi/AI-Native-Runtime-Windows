@@ -184,6 +184,22 @@ namespace AI_Native_Runtime_Windows.Services
         public Task<JsonElement> CancelExecutionAsync(string executionId, CancellationToken ct = default) =>
             Rpc.SendAsync("execution.cancel", new { executionId }, ct);
 
+        // ---- Permission grants (INV-02 plan §4.8/§10, Checkpoint INV-02C) ---------------
+
+        /// <summary>`permission.list` — omitting `applicationId` self-scopes to this
+        /// installation's own application (§4.8 rule 1's "self-service introspection"
+        /// case). This desktop shell has no "all applications" surface yet
+        /// (`Applications` is still `NotYetAvailablePage`, plan §4.18), so there is no
+        /// existing notion of "all locally-known applications" to reuse here.</summary>
+        public Task<JsonElement> ListPermissionGrantsAsync(CancellationToken ct = default) =>
+            Rpc.SendAsync("permission.list", null, ct);
+
+        /// <summary>`permission.revoke` — CORE returns the same non-disclosing "not
+        /// found" rejection whether the grant genuinely doesn't exist or is
+        /// `source = org_admin` (§4.8 rule 5); that is expected, not a bug.</summary>
+        public Task<JsonElement> RevokePermissionGrantAsync(string grantId, CancellationToken ct = default) =>
+            Rpc.SendAsync("permission.revoke", new { grantId }, ct);
+
         // ---- Approvals -----------------------------------------------------------------
 
         public Task<JsonElement> ListApprovalsAsync(CancellationToken ct = default) => Rpc.SendAsync("approval.list", null, ct);
