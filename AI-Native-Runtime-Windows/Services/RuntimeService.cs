@@ -200,6 +200,34 @@ namespace AI_Native_Runtime_Windows.Services
         public Task<JsonElement> RevokePermissionGrantAsync(string grantId, CancellationToken ct = default) =>
             Rpc.SendAsync("permission.revoke", new { grantId }, ct);
 
+        // ---- Local Runtime Policy (INV-03 plan §4.7/§4.8/§10, Checkpoint INV-03D) ------
+        //
+        // No `RevokePolicyAsync`/delete equivalent exists here, deliberately - the plan
+        // removes `policy.delete` entirely (§4.7, a hard constraint). Retirement is
+        // `UpdatePolicyAsync` with `enabled: false`.
+
+        /// <summary>`policy.list` - elevated-caller-only on CORE's side (this desktop
+        /// shell is on CORE's first-party allowlist, so this is expected to succeed).
+        /// Returns every `local_policies` row, enabled or disabled, plus `syncState`
+        /// (`policy_sync_state.sync_status`/`syncedAt`/`lastError`, plan §4.8) alongside
+        /// it in the same response.</summary>
+        public Task<JsonElement> ListPoliciesAsync(CancellationToken ct = default) =>
+            Rpc.SendAsync("policy.list", null, ct);
+
+        /// <summary>`policy.create` - CORE rejects `effect: ALLOW` and any `conditions`
+        /// key outside `capabilityKey`/`runtimeApplicationId`/`runtimeDeviceId` with
+        /// `VALIDATION_FAILED` (plan §4.7); this method does not pre-validate, it relies
+        /// on CORE's own authoritative check and surfaces the rejection to the
+        /// caller.</summary>
+        public Task<JsonElement> CreatePolicyAsync(object conditions, string effect, int priority, CancellationToken ct = default) =>
+            Rpc.SendAsync("policy.create", new { conditions, effect, priority }, ct);
+
+        /// <summary>`policy.update` - the only mechanism by which a local policy is ever
+        /// retired (`enabled: false`). Every field is required; last-write-wins (plan
+        /// §4.7's accepted single-operator concurrency simplification).</summary>
+        public Task<JsonElement> UpdatePolicyAsync(string policyId, object conditions, string effect, int priority, bool enabled, CancellationToken ct = default) =>
+            Rpc.SendAsync("policy.update", new { policyId, conditions, effect, priority, enabled }, ct);
+
         // ---- Approvals -----------------------------------------------------------------
 
         public Task<JsonElement> ListApprovalsAsync(CancellationToken ct = default) => Rpc.SendAsync("approval.list", null, ct);

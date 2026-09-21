@@ -119,6 +119,9 @@ namespace AI_Native_Runtime_Windows.Navigation
                 case "Permissions":
                     ContentFrame.Navigate(typeof(PermissionGrantsPage));
                     break;
+                case "LocalPolicies":
+                    ContentFrame.Navigate(typeof(LocalPoliciesPage));
+                    break;
                 case "Security":
                     ContentFrame.Navigate(typeof(NotYetAvailablePage), (
                         "Security",

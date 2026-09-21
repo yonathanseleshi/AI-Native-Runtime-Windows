@@ -21,6 +21,7 @@
                 <NavigationViewItem Content="Approvals" Tag="Approvals" />
                 <NavigationViewItem Content="Applications" Tag="Applications" />
                 <NavigationViewItem Content="Permissions" Tag="Permissions" />
+                <NavigationViewItem Content="Local Policies" Tag="LocalPolicies" />
                 <NavigationViewItem Content="Capabilities" Tag="Capabilities" />
                 <NavigationViewItem Content="Security" Tag="Security" />
                 <NavigationViewItem Content="Logs" Tag="Logs" />
